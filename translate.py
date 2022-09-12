@@ -107,12 +107,14 @@ if not SKIP_BRD:
             if found.string is None:
                 continue
             if found.string in repeated_translations:
-                raw = raw.replace(found.string.split('<a href')[0], repeated_translations[found.string]) # preserve hrefs, translator will omit them
+                #raw = raw.replace(found.string.split('<a href')[0], repeated_translations[found.string]) # preserve hrefs, translator will omit them
+                raw = raw.replace(found.string, repeated_translations[found.string])
             else:
                 try:
                     translation = ts.google(found.string, from_language='en', to_language='de')
                     repeated_translations[found.string] = translation
-                    raw = raw.replace(found.string.split('<a href')[0], translation) # preserve hrefs, translator will omit them
+                    #raw = raw.replace(found.string.split('<a href')[0], translation) # preserve hrefs, translator will omit them
+                    raw = raw.replace(found.string, translation)
                 except:
                     continue
         # Translate <value> inside <input> in separate loop to replace problem statements
@@ -127,12 +129,14 @@ if not SKIP_BRD:
                     continue
             if found_problem_statement:
                 if found.string in repeated_translations:
-                    raw = raw.replace(found.string.split('<a href')[0], repeated_translations[found.string]) # preserve hrefs, translator will omit them
+                    #raw = raw.replace(found.string.split('<a href')[0], repeated_translations[found.string]) # preserve hrefs, translator will omit them
+                    raw = raw.replace(found.string, repeated_translations[found.string])
                 else:
                     try:
                         translation = ts.google(found.string, from_language='en', to_language='de')
                         repeated_translations[found.string] = translation
-                        raw = raw.replace(found.string.split('<a href')[0], translation) # preserve hrefs, translator will omit them
+                        #raw = raw.replace(found.string.split('<a href')[0], translation) # preserve hrefs, translator will omit them
+                        raw = raw.replace(found.string, translation)
                     except:
                         continue
             else:
