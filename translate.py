@@ -12,7 +12,7 @@ from tqdm import tqdm
 import translators as ts
 ts._google.language_map 
 
-PROJECT_DIR = '~/Desktop/translate-ctat-tutors'
+PROJECT_DIR = '/home/<USER>/Desktop/translate-ctat-tutors/'
 TRANSLATION_DICT = PROJECT_DIR+'translations-stoich-en-to-de.json'
 
 def load_translations(f=TRANSLATION_DICT):
