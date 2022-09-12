@@ -77,7 +77,7 @@ elements = ['buggyMessage', 'hintMessage', 'successMessage', 'buggymessage', 'hi
 # throughout BRD files will corrupt some references that should not be changed. Therefore, I 
 # match titles verbatim right now until I have found a better way of replacing them.
 problem_statements = [
-    "When you solve chemistry problems, you convert units to better understand the scale of a problem.",
+    "When you solve chemistry problems, you convert units to better",
     "Let's convert liters (L) to milliliters (mL) in this problem.",
     "Can you say how many grams of potatoes we would have?",
     "The World Health Organization's (WHO) recommended limit for arsenic",
@@ -122,7 +122,7 @@ if not SKIP_BRD:
                 try:
                     if ps.lower() in found.string.lower():
                         print('Found problem statement!')
-                        is_problem_statement = True
+                        found_problem_statement = True
                 except:
                     continue
             if found_problem_statement:
