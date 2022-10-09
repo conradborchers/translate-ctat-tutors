@@ -19,6 +19,8 @@ import xml.etree.ElementTree as ET
 import re
 from nltk.corpus import stopwords
 
+import pandas as pd
+
 STOPWORDS = stopwords.words('english')
 
 PROJECT_DIR = '/home/cbo/Desktop/translate-ctat-tutors/'
@@ -159,6 +161,16 @@ def process_file(infile, outfile_brd, outfile_massprod):
                 de = de.replace('\t', '') # TODO: Some translation remained with tabs for some reason
             f.write(f"{k}\t{en}\t{de}\n")
     
+    # Produce accessible hand-coding files
+    df_phrase = pd.read_csv(outfile_massprod, sep='\t')
+    df_phrase = df_phrase[df_phrase.columns[:3]].copy()
+    df_phrase.columns = ['reference', 'english', 'german']
+    out = df_phrase\
+        .groupby('english')\
+        .agg({'german': pd.unique, 'reference': list})\
+        .reset_index()
+    outfile_massprod_handcoding = outfile_massprod.replace('_massproduction.txt', 'massproduction_handcoding.csv')
+    out.to_csv(outfile_massprod_handcoding, index=False)
     save_translations(repeated_translations)
     return
 

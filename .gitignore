@@ -4,4 +4,4 @@
 *.json
 *.txt
 *.csv
-
+*.~lock*
