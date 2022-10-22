@@ -21,10 +21,22 @@ from nltk.corpus import stopwords
 
 import pandas as pd
 
-STOPWORDS = stopwords.words('english')
+### 
+
+# SET THESE VARIABLES BEFORE RUNNING THE TRANSLATION ROUTINE
 
 PROJECT_DIR = '/home/cbo/Desktop/translate-ctat-tutors/'
-TRANSLATION_DICT = PROJECT_DIR+'translations-stoich-en-to-de.json'
+TRANSLATION_DICT = PROJECT_DIR+'translations-stoich-en-to-il.json'
+
+TARGET_LANG = 'iw' # hebrew
+LANGUAGE_STRING = 'hebrew' # generic string to identify language
+
+#TARGET_LANG = 'de' # german
+#LANGUAGE_STRING = 'german' # generic string to identify language
+
+###
+
+STOPWORDS = stopwords.words('english')
 
 def load_translations(f=TRANSLATION_DICT):
     with open(f, 'r') as handle:
@@ -64,12 +76,12 @@ if not SKIP_HTML:
                     found.string.replace_with(repeated_translations[found.string])
                 else:
                     try:
-                        translation = ts.google(found.string, from_language='en', to_language='de')
+                        translation = ts.google(found.string, from_language='en', to_language=TARGET_LANG)
                         repeated_translations[found.string] = translation
                         found.string.replace_with(translation)
                     except:
                         continue
-        outpath = f_str.replace('/files/HTML/', '/translated_files/HTML/').replace('.html', '_german.html')
+        outpath = f_str.replace('/files/HTML/', '/translated_files/HTML/').replace('.html', '_'+LANGUAGE_STRING+'.html')
         save_translations(repeated_translations)
         with open(outpath, 'w') as outfile:
             outfile.write(str(soup))
@@ -86,7 +98,7 @@ def clean_name(s, convert_to_lower=True):
 def clean_phrase(s, convert_to_lower=False):
     # TODO (check if html references should be preserved in translation)
     s = re.sub('<[^<]+?>', '', s) #markup
-    s = re.sub('[^0-9a-zA-Z_\'\s*/+-äöüÄÖÜß!?\.]', '', s) #keep alnum, operators, umlauts, and apostrophe
+    s = re.sub('[^0-9a-zA-Z_\'\s*/+-äöüÄÖÜß!?\.\u0590-\u05fe]', '', s) #keep alnum, operators, umlauts, hebrew, and apostrophe
     s = re.sub('\t\n\r', '', s) #remove tab, line break, carriage return
     s = ' '.join(s.split()) #remove redundant whitespace
     return s.lower() if convert_to_lower else s
@@ -105,7 +117,7 @@ def make_var(phrase, signature='_', keep_n_words=4):
         var_translation_map[v] = repeated_translations[the_clean_phrase]
     else:
         try:
-            translation = ts.google(the_clean_phrase, from_language='en', to_language='de')
+            translation = ts.google(the_clean_phrase, from_language='en', to_language=TARGET_LANG)
             translation = clean_phrase(translation) # Clean translation
             repeated_translations[the_clean_phrase] = translation
             var_translation_map[v] = translation
@@ -151,12 +163,12 @@ def process_file(infile, outfile_brd, outfile_massprod):
     
     signature = infile.split('/')[-1].split('.brd')[0]
     with open(outfile_massprod, "w") as f:
-        f.write(f"{signature}\t{signature+'_english'}\t{signature+'_german'}\t\n")
+        f.write(f"{signature}\t{signature+'_english'}\t{signature+'_'+LANGUAGE_STRING}\t\n")
         for k in var_phrase_map.keys():
             en = var_phrase_map[k]
             de = var_translation_map.get(k)
             if de is None:
-                de = '### FEHLENDE UEBERSERSETZUNG ###' # missing translation if API fails, currently no re-tries, need to hand-code 
+                de = '### MISSING TRANSLATION ###' # missing translation if API fails, currently no re-tries, need to hand-code 
             else:
                 de = de.replace('\t', '') # TODO: Some translation remained with tabs for some reason
             f.write(f"{k}\t{en}\t{de}\n")
@@ -164,12 +176,12 @@ def process_file(infile, outfile_brd, outfile_massprod):
     # Produce accessible hand-coding files
     df_phrase = pd.read_csv(outfile_massprod, sep='\t')
     df_phrase = df_phrase[df_phrase.columns[:3]].copy()
-    df_phrase.columns = ['reference', 'english', 'german']
+    df_phrase.columns = ['reference', 'english', LANGUAGE_STRING]
     out = df_phrase\
         .groupby('english')\
-        .agg({'german': pd.unique, 'reference': list})\
+        .agg({LANGUAGE_STRING: pd.unique, 'reference': list})\
         .reset_index()
-    outfile_massprod_handcoding = outfile_massprod.replace('_massproduction.txt', 'massproduction_handcoding.csv')
+    outfile_massprod_handcoding = outfile_massprod.replace('_'+LANGUAGE_STRING+'_massproduction.txt', '_'+LANGUAGE_STRING+'_massproduction_handcoding.csv')
     out.to_csv(outfile_massprod_handcoding, index=False)
     save_translations(repeated_translations)
     return
@@ -177,6 +189,6 @@ def process_file(infile, outfile_brd, outfile_massprod):
 print("Transforming brd files...")
 fs_brd = glob.glob(PROJECT_DIR+'files/FinalBRDs/*')
 for infile in tqdm(fs_brd):
-    outfile_brd = infile.replace('/files/FinalBRDs/', '/translated_files/FinalBRDs/').replace('.brd', '_placeholder.brd')
-    outfile_massprod = infile.replace('/files/FinalBRDs/', '/translated_files/mass_production/').replace('.brd', '_massproduction.txt')
+    outfile_brd = infile.replace('/files/FinalBRDs/', '/translated_files/FinalBRDs/').replace('.brd', '_'+LANGUAGE_STRING+'_placeholder.brd')
+    outfile_massprod = infile.replace('/files/FinalBRDs/', '/translated_files/mass_production/').replace('.brd', '_'+LANGUAGE_STRING+'_massproduction.txt')
     process_file(infile, outfile_brd, outfile_massprod)
