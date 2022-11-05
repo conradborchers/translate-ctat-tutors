@@ -1,5 +1,7 @@
 from ctypes.util import find_library
 
+import time
+
 import glob
 import json
 
@@ -21,18 +23,74 @@ from nltk.corpus import stopwords
 
 import pandas as pd
 
+import deepl
+
 ### 
+
+DEBUG = True # Only translate one example file
+
+USE_DEEPL = True # Translate via commercial deepl API
 
 # SET THESE VARIABLES BEFORE RUNNING THE TRANSLATION ROUTINE
 
 PROJECT_DIR = '/home/cbo/Desktop/translate-ctat-tutors/'
-TRANSLATION_DICT = PROJECT_DIR+'translations-stoich-en-to-il.json'
+TRANSLATION_DICT = PROJECT_DIR+'translations-stoich-en-to-de-deepl-stoich15.json'
 
-TARGET_LANG = 'iw' # hebrew
-LANGUAGE_STRING = 'hebrew' # generic string to identify language
+#TARGET_LANG = 'iw' # hebrew
+#LANGUAGE_STRING = 'hebrew' # generic string to identify language
 
-#TARGET_LANG = 'de' # german
-#LANGUAGE_STRING = 'german' # generic string to identify language
+TARGET_LANG = 'de' # german
+LANGUAGE_STRING = 'german' # generic string to identify language
+
+TOKEN_DIR = PROJECT_DIR+'token.txt'
+GLOSSARY_DIR = PROJECT_DIR+'glossary-stoichiometry-en-de-v1.csv'
+
+print(f"""
+Summary of session settings:
+Only translate one file (debug mode): {DEBUG};
+Using Deepl and not free Google API: {USE_DEEPL};
+We are in directory: {PROJECT_DIR};
+There is a Deepl token txt file at: {TOKEN_DIR};
+There is a custom Deepl glossary csv file at: {GLOSSARY_DIR};
+Signature for persisting storage of translations: {TRANSLATION_DICT};
+We translate from English to: {TARGET_LANG}; which is saved with the signature: {LANGUAGE_STRING};
+""")
+
+input('Press any key to continue with these settings.')
+
+###
+
+## Deepl Functions ##
+
+def read_token(file_path = TOKEN_DIR):
+    '''Reads in bearer tokens from a file path'''
+    with open(file_path, "r") as f:
+        for line in f:
+            auth_key = line.strip()
+            break
+    return auth_key
+
+def read_glossary(file_path):
+    with open(file_path, 'r',  encoding='utf-8') as csv_file:
+        csv_data = csv_file.read()  # Read the file contents as a string
+        glossary = translator.create_glossary_from_csv(
+            "CSV glossary",
+            source_lang="EN",
+            target_lang="DE",
+            csv_data=csv_data,
+        )
+    return glossary
+
+def translate_text(input_text, source_lang="EN", target_lang='DE', formality='less', glossary=None):
+    try:
+        result = translator.translate_text(input_text, source_lang=source_lang, target_lang=target_lang, formality=formality, glossary=glossary)
+        return '' if result.text is None else result.text
+    except:
+        return '### ERROR ###'
+
+auth_key = read_token()
+translator = deepl.Translator(auth_key)
+stoich_glossary = read_glossary(GLOSSARY_DIR)
 
 ###
 
@@ -54,13 +112,14 @@ try:
 except:
     repeated_translations = dict() # If there is not file in DIR
     save_translations(repeated_translations)
-    exit()
 
 # -- HTML --
 print("Transforming HTML files...")
 
 # List HTML files
 fs_html = glob.glob(PROJECT_DIR+'files/HTML/*')
+if DEBUG:
+    fs_html = [PROJECT_DIR+'files/HTML/stoichTutor15.html'] # stoich 15
 
 # HTML tags to translate
 elements = ['a', 'b', 'div']
@@ -73,10 +132,16 @@ if not SKIP_HTML:
             soup = BeautifulSoup(infile, 'html.parser')
             for found in soup.findAll(elements):
                 if found.string in repeated_translations:
-                    found.string.replace_with(repeated_translations[found.string])
+                    try:
+                        found.string.replace_with(repeated_translations[found.string])
+                    except:
+                        continue
                 else:
                     try:
-                        translation = ts.google(found.string, from_language='en', to_language=TARGET_LANG)
+                        if USE_DEEPL:
+                            translation = translate_text(found.string, source_lang="EN", target_lang='DE', formality='less', glossary=stoich_glossary)
+                        else:
+                            translation = ts.google(found.string, from_language='en', to_language=TARGET_LANG)
                         repeated_translations[found.string] = translation
                         found.string.replace_with(translation)
                     except:
@@ -117,7 +182,10 @@ def make_var(phrase, signature='_', keep_n_words=4):
         var_translation_map[v] = repeated_translations[the_clean_phrase]
     else:
         try:
-            translation = ts.google(the_clean_phrase, from_language='en', to_language=TARGET_LANG)
+            if USE_DEEPL:
+                translation = translate_text(the_clean_phrase, source_lang="EN", target_lang='DE', formality='less', glossary=stoich_glossary)
+            else:
+                translation = ts.google(the_clean_phrase, from_language='en', to_language=TARGET_LANG)
             translation = clean_phrase(translation) # Clean translation
             repeated_translations[the_clean_phrase] = translation
             var_translation_map[v] = translation
@@ -172,23 +240,25 @@ def process_file(infile, outfile_brd, outfile_massprod):
             else:
                 de = de.replace('\t', '') # TODO: Some translation remained with tabs for some reason
             f.write(f"{k}\t{en}\t{de}\n")
-    
-    # Produce accessible hand-coding files
-    df_phrase = pd.read_csv(outfile_massprod, sep='\t')
-    df_phrase = df_phrase[df_phrase.columns[:3]].copy()
-    df_phrase.columns = ['reference', 'english', LANGUAGE_STRING]
-    out = df_phrase\
-        .groupby('english')\
-        .agg({LANGUAGE_STRING: pd.unique, 'reference': list})\
-        .reset_index()
-    outfile_massprod_handcoding = outfile_massprod.replace('_'+LANGUAGE_STRING+'_massproduction.txt', '_'+LANGUAGE_STRING+'_massproduction_handcoding.csv')
-    out.to_csv(outfile_massprod_handcoding, index=False)
     save_translations(repeated_translations)
     return
 
 print("Transforming brd files...")
 fs_brd = glob.glob(PROJECT_DIR+'files/FinalBRDs/*')
+if DEBUG:
+    fs_brd = [PROJECT_DIR+'files/FinalBRDs/ChemPT_3T_49_PU.brd'] # stoich 15
 for infile in tqdm(fs_brd):
     outfile_brd = infile.replace('/files/FinalBRDs/', '/translated_files/FinalBRDs/').replace('.brd', '_'+LANGUAGE_STRING+'_placeholder.brd')
     outfile_massprod = infile.replace('/files/FinalBRDs/', '/translated_files/mass_production/').replace('.brd', '_'+LANGUAGE_STRING+'_massproduction.txt')
     process_file(infile, outfile_brd, outfile_massprod)
+
+print(f"Creating accessible hand-coding file for {TRANSLATION_DICT}")
+outf_dict = TRANSLATION_DICT.replace('.json', '-handcoding.csv')
+print(f"Saving to {outf_dict}")
+df_phrase = pd.DataFrame(repeated_translations.items())
+df_phrase.columns = ['english', LANGUAGE_STRING]
+out = df_phrase\
+    .groupby('english')\
+    .agg({LANGUAGE_STRING: pd.unique})\
+    .reset_index()
+out.to_csv(outf_dict, index=False)
