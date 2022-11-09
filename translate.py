@@ -34,7 +34,7 @@ USE_DEEPL = True # Translate via commercial deepl API
 # SET THESE VARIABLES BEFORE RUNNING THE TRANSLATION ROUTINE
 
 PROJECT_DIR = '/home/cbo/Desktop/translate-ctat-tutors/'
-TRANSLATION_DICT = PROJECT_DIR+'translations-stoich-en-to-de-deepl-stoich15.json'
+TRANSLATION_DICT = PROJECT_DIR+'translations-stoich-en-to-de-deepl-12+13+14.json'
 
 #TARGET_LANG = 'iw' # hebrew
 #LANGUAGE_STRING = 'hebrew' # generic string to identify language
@@ -43,7 +43,7 @@ TARGET_LANG = 'de' # german
 LANGUAGE_STRING = 'german' # generic string to identify language
 
 TOKEN_DIR = PROJECT_DIR+'token.txt'
-GLOSSARY_DIR = PROJECT_DIR+'glossary-stoichiometry-en-de-v1.csv'
+GLOSSARY_DIR = PROJECT_DIR+'glossary-stoichiometry-en-de-sascha-round-1.csv'
 
 print(f"""
 Summary of session settings:
@@ -119,7 +119,9 @@ print("Transforming HTML files...")
 # List HTML files
 fs_html = glob.glob(PROJECT_DIR+'files/HTML/*')
 if DEBUG:
-    fs_html = [PROJECT_DIR+'files/HTML/stoichTutor15.html'] # stoich 15
+    fs_html = [PROJECT_DIR+'files/HTML/stoichTutor12.html',
+               PROJECT_DIR+'files/HTML/stoichTutor13.html',
+               PROJECT_DIR+'files/HTML/stoichTutor14.html']
 
 # HTML tags to translate
 elements = ['a', 'b', 'div']
@@ -246,7 +248,9 @@ def process_file(infile, outfile_brd, outfile_massprod):
 print("Transforming brd files...")
 fs_brd = glob.glob(PROJECT_DIR+'files/FinalBRDs/*')
 if DEBUG:
-    fs_brd = [PROJECT_DIR+'files/FinalBRDs/ChemPT_3T_49_PU.brd'] # stoich 15
+    fs_brd = [PROJECT_DIR+'files/FinalBRDs/ChemPT_3T_14_PU.brd', #Stoich 12-14
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_3T_25_PU.brd',
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_3T_5_PU.brd'] 
 for infile in tqdm(fs_brd):
     outfile_brd = infile.replace('/files/FinalBRDs/', '/translated_files/FinalBRDs/').replace('.brd', '_'+LANGUAGE_STRING+'_placeholder.brd')
     outfile_massprod = infile.replace('/files/FinalBRDs/', '/translated_files/mass_production/').replace('.brd', '_'+LANGUAGE_STRING+'_massproduction.txt')
