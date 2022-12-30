@@ -27,14 +27,15 @@ import deepl
 
 ### 
 
-DEBUG = True # Only translate one example file
-
+DEBUG = False # Only translate one example file
 USE_DEEPL = True # Translate via commercial deepl API
+FILL_HANDCODING = True # Use hand-coded translation dictionary
 
 # SET THESE VARIABLES BEFORE RUNNING THE TRANSLATION ROUTINE
 
 PROJECT_DIR = '/home/cbo/Desktop/translate-ctat-tutors/'
-TRANSLATION_DICT = PROJECT_DIR+'translations-stoich-en-to-de-deepl-12+13+14.json'
+TRANSLATION_DICT = PROJECT_DIR+'translations-stoich-en-to-de-deepl-handcode-v1-missing.json'
+HANDCODING_CSV = PROJECT_DIR+'Stoich-En-De-Hand-V1.csv'
 
 #TARGET_LANG = 'iw' # hebrew
 #LANGUAGE_STRING = 'hebrew' # generic string to identify language
@@ -43,15 +44,17 @@ TARGET_LANG = 'de' # german
 LANGUAGE_STRING = 'german' # generic string to identify language
 
 TOKEN_DIR = PROJECT_DIR+'token.txt'
-GLOSSARY_DIR = PROJECT_DIR+'glossary-stoichiometry-en-de-sascha-round-1.csv'
+GLOSSARY_DIR = PROJECT_DIR+'glossary-stoichiometry-en-de-sascha-round-3.csv'
 
 print(f"""
 Summary of session settings:
 Only translate one file (debug mode): {DEBUG};
+Primarily fill translations via hand-coded file: {FILL_HANDCODING};
 Using Deepl and not free Google API: {USE_DEEPL};
 We are in directory: {PROJECT_DIR};
 There is a Deepl token txt file at: {TOKEN_DIR};
 There is a custom Deepl glossary csv file at: {GLOSSARY_DIR};
+There is a hand-coded translation csv file at {HANDCODING_CSV};
 Signature for persisting storage of translations: {TRANSLATION_DICT};
 We translate from English to: {TARGET_LANG}; which is saved with the signature: {LANGUAGE_STRING};
 """)
@@ -106,12 +109,25 @@ def save_translations(d_out, f=TRANSLATION_DICT):
         json.dump(d_out, handle, ensure_ascii = False)
     return
 
+def load_hand_coding(f=HANDCODING_CSV, target_lang='german'):
+    df = pd.read_csv(f)
+    df.drop_duplicates(subset=['english'], inplace=True)
+    ans = {k: v for k, v in zip(df['english'], df[target_lang])}
+    return ans
+
 # Store repeated translations as there is usually a lot to translate in BRDs -> reduce runtime
-try:
-    repeated_translations = load_translations() 
-except:
-    repeated_translations = dict() # If there is not file in DIR
-    save_translations(repeated_translations)
+if FILL_HANDCODING:
+    try:
+        repeated_translations = load_hand_coding() 
+    except:
+        print('Failed to load hand-coding file. Exiting...')
+        exit()
+else:
+    try:
+        repeated_translations = load_translations() 
+    except:
+        repeated_translations = dict() # If there is not file in DIR
+        save_translations(repeated_translations)
 
 # -- HTML --
 print("Transforming HTML files...")
@@ -119,9 +135,17 @@ print("Transforming HTML files...")
 # List HTML files
 fs_html = glob.glob(PROJECT_DIR+'files/HTML/*')
 if DEBUG:
-    fs_html = [PROJECT_DIR+'files/HTML/stoichTutor12.html',
-               PROJECT_DIR+'files/HTML/stoichTutor13.html',
-               PROJECT_DIR+'files/HTML/stoichTutor14.html']
+    fs_html = [PROJECT_DIR+'files/HTML/stoichTutor1.html',
+               PROJECT_DIR+'files/HTML/stoichTutor2.html',
+               PROJECT_DIR+'files/HTML/stoichTutor3.html',
+               PROJECT_DIR+'files/HTML/stoichTutor4.html',
+               PROJECT_DIR+'files/HTML/stoichTutor5.html',
+               PROJECT_DIR+'files/HTML/stoichTutor6.html',
+               PROJECT_DIR+'files/HTML/stoichTutor7.html',
+               PROJECT_DIR+'files/HTML/stoichTutor8.html',
+               PROJECT_DIR+'files/HTML/stoichTutor9.html',
+               PROJECT_DIR+'files/HTML/stoichTutor10.html',
+               PROJECT_DIR+'files/HTML/stoichTutor11.html']
 
 # HTML tags to translate
 elements = ['a', 'b', 'div']
@@ -248,9 +272,17 @@ def process_file(infile, outfile_brd, outfile_massprod):
 print("Transforming brd files...")
 fs_brd = glob.glob(PROJECT_DIR+'files/FinalBRDs/*')
 if DEBUG:
-    fs_brd = [PROJECT_DIR+'files/FinalBRDs/ChemPT_3T_14_PU.brd', #Stoich 12-14
-              PROJECT_DIR+'files/FinalBRDs/ChemPT_3T_25_PU.brd',
-              PROJECT_DIR+'files/FinalBRDs/ChemPT_3T_5_PU.brd'] 
+    fs_brd = [PROJECT_DIR+'files/FinalBRDs/ChemPT_1T_01_PU.brd',
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_1T_02_PU.brd',
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_1T_06_PU.brd',
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_2T_03_PU.brd',
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_2T_04_PU.brd',
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_2T_33_PU.brd',
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_2T_24_PU.brd',
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_2T_32_PU.brd',
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_2T_59_PU.brd',
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_3T_26_PU.brd',
+              PROJECT_DIR+'files/FinalBRDs/ChemPT_3T_62_PU.brd'] 
 for infile in tqdm(fs_brd):
     outfile_brd = infile.replace('/files/FinalBRDs/', '/translated_files/FinalBRDs/').replace('.brd', '_'+LANGUAGE_STRING+'_placeholder.brd')
     outfile_massprod = infile.replace('/files/FinalBRDs/', '/translated_files/mass_production/').replace('.brd', '_'+LANGUAGE_STRING+'_massproduction.txt')
